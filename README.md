@@ -6,12 +6,14 @@ Usage:
 
 3. `java -jar target/manifest-merger-jar-with-dependencies.jar  --main mainAndroidManifest.xml`
 
+```
 --log [VERBOSE, INFO, WARNING, ERROR]
 --libs [path separated list of lib's manifests]
 --overlays [path separated list of overlay's manifests]
 --property [PACKAGE | VERSION_CODE | VERSION_NAME | MIN_SDK_VERSION | TARGET_SDK_VERSION | MAX_SDK_VERSION=value]
 --placeholder [name=value]
 --out [path of the output file]
+```
 
 I have used this library as follows:
 
