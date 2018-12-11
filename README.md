@@ -1,6 +1,6 @@
 Usage:
 
-1. git clone git@github.com:Bresiu/android-manifest-merger.git
+1. `git clone git@github.com:Bresiu/android-manifest-merger.git`
 
 2. mvn install
 
