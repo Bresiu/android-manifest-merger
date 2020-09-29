@@ -23,12 +23,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that the target field or method should only be accessed with the specified lock being
- * held.
+ * Indicates that the target field or method should only be accessed
+ * with the specified lock being held.
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD, ElementType.FIELD})
 public @interface GuardedBy {
-  String value();
+    String value();
 }
