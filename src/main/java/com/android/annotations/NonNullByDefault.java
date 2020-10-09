@@ -16,24 +16,29 @@
 
 package com.android.annotations;
 
+import static java.lang.annotation.ElementType.PACKAGE;
+import static java.lang.annotation.ElementType.TYPE;
+
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.PACKAGE;
-import static java.lang.annotation.ElementType.TYPE;
-
 /**
- * Denotes that all parameters, fields or methods within a class or method by default can not be
- * null. This can be overridden by adding specific {@link com.android.annotations.Nullable}
- * annotations on fields, parameters or methods that should not use the default. <p/> NOTE: Eclipse
- * does not yet handle defaults well (in particular, if you add this on a class which implements
- * Comparable, then it will insist that your compare method is changing the nullness of the compare
- * parameter, so you'll need to add @Nullable on it, which also is not right (since the method
- * should have implied @NonNull and you do not need to check the parameter.). For now, it's best to
- * individually annotate methods, parameters and fields. <p/> This is a marker annotation and it has
- * no specific attributes.
+ * Denotes that all parameters, fields or methods within a class or method by
+ * default can not be null. This can be overridden by adding specific
+ * {@link com.android.annotations.Nullable} annotations on fields, parameters or
+ * methods that should not use the default.
+ * <p/>
+ * NOTE: Eclipse does not yet handle defaults well (in particular, if
+ * you add this on a class which implements Comparable, then it will insist
+ * that your compare method is changing the nullness of the compare parameter,
+ * so you'll need to add @Nullable on it, which also is not right (since
+ * the method should have implied @NonNull and you do not need to check
+ * the parameter.). For now, it's best to individually annotate methods,
+ * parameters and fields.
+ * <p/>
+ * This is a marker annotation and it has no specific attributes.
  */
 @Documented
 @Retention(RetentionPolicy.SOURCE)

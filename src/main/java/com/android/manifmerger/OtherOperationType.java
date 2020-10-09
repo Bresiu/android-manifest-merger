@@ -22,9 +22,9 @@ package com.android.manifmerger;
  */
 public enum OtherOperationType {
 
-  // used to direct lint
-  ignore,
+    // used to direct lint
+    ignore,
 
-  // used to direct lint
-  targetAPI
+    // used to direct lint
+    targetAPI
 }

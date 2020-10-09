@@ -17,8 +17,9 @@
 package com.android.manifmerger;
 
 /**
- * Defines attributes operations as it can be provided by users through attributes on the target xml
- * element. <p>
+ * Defines attributes operations as it can be provided by users through attributes on the target
+ * xml element.
+ * <p>
  *
  * For instance:
  * <pre>
@@ -36,7 +37,8 @@ package com.android.manifmerger;
  * tools:remove, tools:replace, tools:strict. The value of that attribute is a comma separated list
  * of attribute names on which the operation applies.
  *
- * <p> For instance:
+ * <p>
+ * For instance:
  * <pre>
  *     {@code
  *     <permission
@@ -51,19 +53,19 @@ package com.android.manifmerger;
  */
 enum AttributeOperationType {
 
-  /**
-   * Removes the attributes from all further merging activities.
-   */
-  REMOVE,
+    /**
+     * Removes the attributes from all further merging activities.
+     */
+    REMOVE,
 
-  /**
-   * Replace the attributes values with the provided one. (Will generate a merging error if no new
-   * value is provided).
-   */
-  REPLACE,
+    /**
+     * Replace the attributes values with the provided one. (Will generate a merging error if no
+     * new value is provided).
+     */
+    REPLACE,
 
-  /**
-   * The attributes should not be specified by any lower priority xml elements.
-   */
-  STRICT
+    /**
+     * The attributes should not be specified by any lower priority xml elements.
+     */
+    STRICT
 }

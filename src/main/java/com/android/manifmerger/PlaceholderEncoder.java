@@ -17,6 +17,7 @@
 package com.android.manifmerger;
 
 import com.android.annotations.NonNull;
+
 import java.util.regex.Matcher;
 
 /**
@@ -24,28 +25,30 @@ import java.util.regex.Matcher;
  */
 public class PlaceholderEncoder {
 
-  /**
-   * Visits a document's entire tree and check each attribute for a placeholder existence. If one is
-   * found, encode its name so tools like aapt will not object invalid characters and such. <p>
-   *
-   * @param xmlDocument the xml document to visit
-   */
-  public void visit(@NonNull XmlDocument xmlDocument) {
+    /**
+     * Visits a document's entire tree and check each attribute for a placeholder existence.
+     * If one is found, encode its name so tools like aapt will not object invalid characters and
+     * such.
+     * <p>
+     *
+     * @param xmlDocument the xml document to visit
+     */
+    public void visit(@NonNull XmlDocument xmlDocument) {
 
-    visit(xmlDocument.getRootNode());
-  }
-
-  private void visit(@NonNull XmlElement xmlElement) {
-
-    for (XmlAttribute xmlAttribute : xmlElement.getAttributes()) {
-      Matcher matcher = PlaceholderHandler.PATTERN.matcher(xmlAttribute.getValue());
-      if (matcher.matches()) {
-        String encodedValue = "dollar_openBracket_" + matcher.group(2) + "_closeBracket";
-        xmlAttribute.getXml().setValue(encodedValue);
-      }
+        visit(xmlDocument.getRootNode());
     }
-    for (XmlElement childElement : xmlElement.getMergeableElements()) {
-      visit(childElement);
+
+    private void visit(@NonNull XmlElement xmlElement) {
+
+        for (XmlAttribute xmlAttribute : xmlElement.getAttributes()) {
+            Matcher matcher = PlaceholderHandler.PATTERN.matcher(xmlAttribute.getValue());
+            if (matcher.matches()) {
+                String encodedValue = "dollar_openBracket_" + matcher.group(2) + "_closeBracket";
+                xmlAttribute.getXml().setValue(encodedValue);
+            }
+        }
+        for (XmlElement childElement : xmlElement.getMergeableElements()) {
+            visit(childElement);
+        }
     }
-  }
 }

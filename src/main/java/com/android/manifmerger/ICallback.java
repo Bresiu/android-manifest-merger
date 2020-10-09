@@ -23,14 +23,15 @@ import com.android.annotations.NonNull;
  */
 public interface ICallback {
 
-  int UNKNOWN_CODENAME = 0;
+    int UNKNOWN_CODENAME = 0;
 
-  /**
-   * Queries the caller to find the API level for a given provisional API codename, as used in the
-   * &lt;uses-sdk&gt; {@code minSdkVersion} field.
-   *
-   * @param codename A non-null codename string.
-   * @return The integer API > 0 for the given codename, or {@link #UNKNOWN_CODENAME}.
-   */
-  int queryCodenameApiLevel(@NonNull String codename);
+    /**
+     * Queries the caller to find the API level for a given provisional API codename,
+     * as used in the &lt;uses-sdk&gt; {@code minSdkVersion} field.
+     *
+     * @param codename A non-null codename string.
+     * @return The integer API > 0 for the given codename, or {@link #UNKNOWN_CODENAME}.
+     */
+    int queryCodenameApiLevel(@NonNull String codename);
+
 }
