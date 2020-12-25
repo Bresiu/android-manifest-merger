@@ -18,13 +18,13 @@ package com.android.manifmerger;
 
 import com.android.annotations.NonNull;
 import com.android.annotations.Nullable;
-import com.android.annotations.VisibleForTesting;
 import com.android.annotations.concurrency.Immutable;
 import com.android.ide.common.blame.MessageJsonSerializer;
 import com.android.ide.common.blame.SourceFile;
 import com.android.ide.common.blame.SourceFilePosition;
 import com.android.utils.ILogger;
-import com.google.common.base.Optional;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -36,9 +36,6 @@ import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParseException;
-
-import org.xml.sax.SAXException;
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,8 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import javax.xml.parsers.ParserConfigurationException;
+import org.xml.sax.SAXException;
 
 /**
  * Contains all actions taken during a merging invocation.
@@ -85,10 +82,8 @@ public class Actions {
      * passed key.
      */
     @NonNull
-    public ImmutableList<NodeRecord> getNodeRecords(XmlNode.NodeKey key) {
-        return mRecords.containsKey(key)
-                ? mRecords.get(key).getNodeRecords()
-                : ImmutableList.<NodeRecord>of();
+    public ImmutableList<NodeRecord> getNodeRecords(@NonNull XmlNode.NodeKey key) {
+        return mRecords.containsKey(key) ? mRecords.get(key).getNodeRecords() : ImmutableList.of();
     }
 
     /**
@@ -123,16 +118,17 @@ public class Actions {
      * Initial dump of the merging tool actions, need to be refined and spec'ed out properly.
      * @param logger logger to log to at INFO level.
      */
-    void log(ILogger logger) {
+    void log(@NonNull ILogger logger) {
         logger.verbose(getLogs());
     }
 
     /**
      * Dump merging tool actions to a text file.
+     *
      * @param fileWriter the file to write all actions into.
-     * @throws IOException
+     * @throws IOException when logging failed.
      */
-    void log(FileWriter fileWriter) throws IOException {
+    void log(@NonNull FileWriter fileWriter) throws IOException {
         fileWriter.append(getLogs());
     }
 
@@ -161,7 +157,7 @@ public class Actions {
     /**
      * Defines all possible actions taken from the merging tool for an xml element or attribute.
      */
-    enum ActionType {
+    public enum ActionType {
         /**
          * The element was added into the resulting merged manifest.
          */
@@ -183,6 +179,11 @@ public class Actions {
          * element to be present by default while targeted SDK requires its declaration.
          */
         IMPLIED,
+        /**
+         * The element was converted into a different type of element in the resulting merged
+         * manifest.
+         */
+        CONVERTED,
     }
 
     /**
@@ -205,19 +206,27 @@ public class Actions {
             mReason = reason;
         }
 
+        @NonNull
         public ActionType getActionType() {
             return mActionType;
         }
 
+        @NonNull
         public SourceFilePosition getActionLocation() {
             return mActionLocation;
         }
 
+        @NonNull
         public XmlNode.NodeKey getTargetId() {
             return mTargetId;
         }
 
-        public void print(StringBuilder stringBuilder) {
+        @Nullable
+        public String getReason() {
+            return mReason;
+        }
+
+        public void print(@NonNull StringBuilder stringBuilder) {
             stringBuilder.append(mActionType)
                     .append(" from ")
                     .append(mActionLocation);
@@ -233,6 +242,7 @@ public class Actions {
      */
     public static class NodeRecord extends Record {
 
+        @NonNull
         private final NodeOperationType mNodeOperationType;
 
         NodeRecord(@NonNull ActionType actionType,
@@ -244,6 +254,7 @@ public class Actions {
             this.mNodeOperationType = Preconditions.checkNotNull(nodeOperationType);
         }
 
+        @NonNull
         @Override
         public String toString() {
             return "Id=" + mTargetId.toString() + " actionType=" + getActionType()
@@ -259,6 +270,7 @@ public class Actions {
 
         // first in wins which should be fine, the first
         // operation type will be the highest priority one
+        @Nullable
         private final AttributeOperationType mOperationType;
 
         AttributeRecord(
@@ -276,15 +288,19 @@ public class Actions {
             return mOperationType;
         }
 
+        @NonNull
         @Override
         public String toString() {
-            return "Id=" + mTargetId + " actionType=" + getActionType()
-                    + " location=" + getActionLocation()
-                    + " opType=" + getOperationType();
+            return MoreObjects.toStringHelper(this).add("Id", mTargetId)
+                    .add("actionType=",getActionType())
+                    .add("location", getActionLocation())
+                    .add("opType", getOperationType()).toString();
         }
     }
 
-    public String persist() throws IOException  {
+    @NonNull
+    public String persist() {
+        //noinspection SpellCheckingInspection
         GsonBuilder gson = new GsonBuilder().setPrettyPrinting();
         gson.enableComplexMapKeySerialization();
         MessageJsonSerializer.registerTypeAdapters(gson);
@@ -292,7 +308,7 @@ public class Actions {
     }
 
     @Nullable
-    public static Actions load(InputStream inputStream) throws IOException {
+    public static Actions load(@NonNull InputStream inputStream) {
 
         return getGsonParser().fromJson(new InputStreamReader(inputStream), Actions.class);
     }
@@ -300,8 +316,8 @@ public class Actions {
     private static class NodeNameDeserializer implements JsonDeserializer<XmlNode.NodeName> {
 
         @Override
-        public XmlNode.NodeName deserialize(JsonElement json, Type typeOfT,
-                JsonDeserializationContext context) throws JsonParseException {
+        public XmlNode.NodeName deserialize(@NonNull JsonElement json, Type typeOfT,
+                @NonNull JsonDeserializationContext context) throws JsonParseException {
             if (json.getAsJsonObject().get("mNamespaceURI") != null) {
                 return context.deserialize(json, XmlNode.NamespaceAwareName.class);
             } else {
@@ -311,12 +327,12 @@ public class Actions {
     }
 
     @Nullable
-    @SuppressWarnings("unchecked")
     public static Actions load(String xml) {
-
         return getGsonParser().fromJson(xml, Actions.class);
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
+    @NonNull
     private static Gson getGsonParser() {
         GsonBuilder gsonBuilder = new GsonBuilder();
         gsonBuilder.enableComplexMapKeySerialization();
@@ -325,18 +341,20 @@ public class Actions {
         return gsonBuilder.create();
     }
 
-    public ImmutableMultimap<Integer, Record> getResultingSourceMapping(XmlDocument xmlDocument)
+    public ImmutableMultimap<Integer, Record> getResultingSourceMapping(@NonNull XmlDocument xmlDocument)
             throws ParserConfigurationException, SAXException, IOException {
 
         SourceFile inMemory = SourceFile.UNKNOWN;
 
-        XmlDocument loadedWithLineNumbers = XmlLoader.load(
-                xmlDocument.getSelectors(),
-                xmlDocument.getSystemPropertyResolver(),
-                inMemory,
-                xmlDocument.prettyPrint(),
-                XmlDocument.Type.MAIN,
-                Optional.<String>absent() /* mainManifestPackageName */);
+        XmlDocument loadedWithLineNumbers =
+                XmlLoader.load(
+                        xmlDocument.getSelectors(),
+                        xmlDocument.getSystemPropertyResolver(),
+                        inMemory,
+                        xmlDocument.prettyPrint(),
+                        XmlDocument.Type.MAIN,
+                        null, /* mainManifestPackageName */
+                        xmlDocument.getModel());
 
         ImmutableMultimap.Builder<Integer, Record> mappingBuilder = ImmutableMultimap.builder();
         for (XmlElement xmlElement : loadedWithLineNumbers.getRootNode().getMergeableElements()) {
@@ -345,8 +363,8 @@ public class Actions {
         return mappingBuilder.build();
     }
 
-    private void parse(XmlElement element,
-            ImmutableMultimap.Builder<Integer, Record> mappings) {
+    private void parse(@NonNull XmlElement element,
+            @NonNull ImmutableMultimap.Builder<Integer, Record> mappings) {
         DecisionTreeRecord decisionTreeRecord = mRecords.get(element.getId());
         if (decisionTreeRecord != null) {
             Actions.NodeRecord nodeRecord = findNodeRecord(decisionTreeRecord);
@@ -366,7 +384,8 @@ public class Actions {
         }
     }
 
-    public String blame(XmlDocument xmlDocument)
+    @NonNull
+    public String blame(@NonNull XmlDocument xmlDocument)
             throws IOException, SAXException, ParserConfigurationException {
 
         ImmutableMultimap<Integer, Record> resultingSourceMapping =
@@ -392,7 +411,7 @@ public class Actions {
     }
 
     @Nullable
-    private static Actions.NodeRecord findNodeRecord(DecisionTreeRecord decisionTreeRecord) {
+    private static Actions.NodeRecord findNodeRecord(@NonNull DecisionTreeRecord decisionTreeRecord) {
         for (Actions.NodeRecord nodeRecord : decisionTreeRecord.getNodeRecords()) {
             if (nodeRecord.getActionType() == Actions.ActionType.ADDED) {
                 return nodeRecord;
@@ -403,8 +422,8 @@ public class Actions {
 
     @Nullable
     private static Actions.AttributeRecord findAttributeRecord(
-            DecisionTreeRecord decisionTreeRecord,
-            XmlAttribute xmlAttribute) {
+            @NonNull DecisionTreeRecord decisionTreeRecord,
+            @NonNull XmlAttribute xmlAttribute) {
         for (Actions.AttributeRecord attributeRecord : decisionTreeRecord
                 .getAttributeRecords(xmlAttribute.getName())) {
             if (attributeRecord.getActionType() == Actions.ActionType.ADDED) {
@@ -428,16 +447,18 @@ public class Actions {
      */
     static class DecisionTreeRecord {
         // all other occurrences of the nodes decisions, in order of decisions.
-        private final List<NodeRecord> mNodeRecords = new ArrayList<NodeRecord>();
+        private final List<NodeRecord> mNodeRecords = new ArrayList<>();
 
         // all attributes decisions indexed by attribute name.
-        final Map<XmlNode.NodeName, List<AttributeRecord>> mAttributeRecords =
-                new HashMap<XmlNode.NodeName, List<AttributeRecord>>();
+        @NonNull
+        final Map<XmlNode.NodeName, List<AttributeRecord>> mAttributeRecords = new HashMap<>();
 
+        @NonNull
         ImmutableList<NodeRecord> getNodeRecords() {
             return ImmutableList.copyOf(mNodeRecords);
         }
 
+        @NonNull
         ImmutableMap<XmlNode.NodeName, List<AttributeRecord>> getAttributesRecords() {
             return ImmutableMap.copyOf(mAttributeRecords);
         }
@@ -445,14 +466,15 @@ public class Actions {
         DecisionTreeRecord() {
         }
 
-        void addNodeRecord(NodeRecord nodeRecord) {
-            mNodeRecords.add(nodeRecord);
+        void addNodeRecord(@NonNull NodeRecord nodeRecord) {
+            mNodeRecords.add(Preconditions.checkNotNull(nodeRecord));
         }
 
+        @NonNull
         ImmutableList<AttributeRecord> getAttributeRecords(XmlNode.NodeName attributeName) {
             List<AttributeRecord> attributeRecords = mAttributeRecords.get(attributeName);
             return attributeRecords == null
-                    ? ImmutableList.<AttributeRecord>of()
+                    ? ImmutableList.of()
                     : ImmutableList.copyOf(attributeRecords);
         }
     }

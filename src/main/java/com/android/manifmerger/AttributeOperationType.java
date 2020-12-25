@@ -64,8 +64,9 @@ enum AttributeOperationType {
      */
     REPLACE,
 
-    /**
-     * The attributes should not be specified by any lower priority xml elements.
-     */
-    STRICT
+    /** The attributes should not be specified by any lower priority xml elements. */
+    STRICT,
+
+    /** Suppress the XML merge warnings */
+    IGNORE_WARNING
 }

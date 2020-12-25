@@ -16,14 +16,14 @@
 
 package com.android.manifmerger;
 
-import com.android.annotations.VisibleForTesting;
+import com.android.annotations.NonNull;
 import com.android.utils.ILogger;
 import com.android.utils.StdLogger;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.io.Files;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -64,6 +64,10 @@ public class Merger {
                 usage();
                 return 0;
             }
+            // no value for --remove-tools-declarations flag
+            if ("--remove-tools-declarations".equals(selector)) {
+                continue;
+            }
             if (!arguments.hasNext()) {
                 logger.error(null /* throwable */,
                         "Command switch " + selector + " has no value associated");
@@ -94,9 +98,12 @@ public class Merger {
         arguments = Arrays.asList(args).iterator();
         File outFile = null;
 
-        // first pass to get all mandatory parameters.
         while (arguments.hasNext()) {
             String selector = arguments.next();
+            if ("--remove-tools-declarations".equals(selector)) {
+                invoker.withFeatures(ManifestMerger2.Invoker.Feature.REMOVE_TOOLS_DECLARATIONS);
+                continue;
+            }
             String value = arguments.next();
             if (Strings.isNullOrEmpty(value)) {
                 logger.error(null /* throwable */,
@@ -125,14 +132,14 @@ public class Merger {
                     return 1;
                 }
                 try {
-                    ManifestMerger2.SystemProperty systemProperty = ManifestMerger2.SystemProperty
+                    ManifestSystemProperty manifestSystemProperty = ManifestSystemProperty
                             .valueOf(value.substring(0, value.indexOf('='))
                                     .toUpperCase(Locale.ENGLISH));
-                    invoker.setOverride(systemProperty, value.substring(value.indexOf('=') + 1));
+                    invoker.setOverride(manifestSystemProperty, value.substring(value.indexOf('=') + 1));
                 } catch (IllegalArgumentException e) {
                     logger.error(e, "Invalid property name "+ value.substring(0, value.indexOf('='))
                         + ", allowed properties are : " + Joiner
-                            .on(',').join(ManifestMerger2.SystemProperty.values()));
+                            .on(',').join(ManifestSystemProperty.values()));
                     return 1;
                 }
             }
@@ -152,20 +159,24 @@ public class Merger {
         try {
             MergingReport merge = invoker.merge();
             if (merge.getResult().isSuccess()) {
-                XmlDocument xmlDocument = merge.getMergedDocument().get();
-                if (outFile != null) {
-                    try {
-                        Files.write(xmlDocument.prettyPrint(), outFile, Charsets.UTF_8);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                String mergedDocument =
+                        merge.getMergedDocument(MergingReport.MergedManifestKind.MERGED);
+                if (mergedDocument != null) {
+                    if (outFile != null) {
+                        try {
+                            Files.asCharSink(outFile, Charsets.UTF_8).write(mergedDocument);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        System.out.println(mergedDocument);
                     }
-                } else {
-                    System.out.println(xmlDocument.prettyPrint());
                 }
             } else {
                 for (MergingReport.Record record : merge.getLoggingRecords()) {
                     System.err.println(record);
                 }
+                return 1;
             }
         } catch (ManifestMerger2.MergeFailureException e) {
             logger.error(e, "Exception while merging manifests");
@@ -174,8 +185,8 @@ public class Merger {
         return 0;
     }
 
-    protected ManifestMerger2.Invoker createInvoker(File mainManifestFile,
-            ILogger logger) {
+    protected ManifestMerger2.Invoker createInvoker(@NonNull File mainManifestFile,
+            @NonNull ILogger logger) {
         return ManifestMerger2.newMerger(mainManifestFile, logger, ManifestMerger2.MergeType.APPLICATION);
     }
 
@@ -187,16 +198,17 @@ public class Merger {
         System.out.println("\t--libs [path separated list of lib's manifests]");
         System.out.println("\t--overlays [path separated list of overlay's manifests]");
         System.out.println("\t--property ["
-                + Joiner.on(" | ").join(ManifestMerger2.SystemProperty.values())
+                + Joiner.on(" | ").join(ManifestSystemProperty.values())
                 + "=value]");
         System.out.println("\t--placeholder [name=value]");
         System.out.println("\t--out [path of the output file]");
+        System.out.println("\t--remove-tools-declarations");
     }
 
 
     @VisibleForTesting
-    protected File checkPath(String path) throws FileNotFoundException {
-        File file = new File(path);
+    protected File checkPath(@NonNull String path) throws FileNotFoundException {
+        @NonNull File file = new File(path);
         if (!file.exists()) {
             System.err.println(path + " does not exist");
             throw new FileNotFoundException(path);
@@ -205,7 +217,7 @@ public class Merger {
     }
 
     @VisibleForTesting
-    protected ILogger createLogger(StdLogger.Level level) {
+    protected ILogger createLogger(@NonNull StdLogger.Level level) {
         return new StdLogger(level);
     }
 

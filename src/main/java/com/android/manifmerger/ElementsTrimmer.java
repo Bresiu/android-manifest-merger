@@ -21,12 +21,10 @@ import static com.android.SdkConstants.ANDROID_URI;
 import com.android.SdkConstants;
 import com.android.annotations.NonNull;
 import com.android.xml.AndroidManifest;
-
-import org.w3c.dom.Attr;
-
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import org.w3c.dom.Attr;
 
 /**
  * Trims the document from unwanted, repeated elements.
@@ -37,9 +35,8 @@ public class ElementsTrimmer {
      * Trims unwanted, duplicated elements from the merged document.
      * <p>
      * Current trimmed elements are :
-     * <p>
      * <ul>
-     *     <li>uses-features with glEsVersion key</li>
+     *     <li>uses-features with glEsVersion key
      * <ul>
      *     <li>The highest 1.x version element will be kept regardless of 'required' flag value</li>
      *     <li>If the above element is present and has a 'false' required flag, there can be at most
@@ -50,6 +47,7 @@ public class ElementsTrimmer {
      *     most one element of a lesser version (but higher than 2.0) with a 'required' attribute
      *     set to true.</li>
      * </ul>
+     * </li>
      * </ul>
      *
      * @param xmlDocument the xml document to trim.
@@ -136,7 +134,7 @@ public class ElementsTrimmer {
 
     }
 
-    private static Integer getGlEsVersion(XmlElement xmlElement) {
+    private static Integer getGlEsVersion(@NonNull XmlElement xmlElement) {
         Attr glEsVersion = xmlElement.getXml()
                 .getAttributeNodeNS(ANDROID_URI, AndroidManifest.ATTRIBUTE_GLESVERSION);
         if (glEsVersion == null) {
@@ -145,7 +143,7 @@ public class ElementsTrimmer {
         return getHexValue(glEsVersion);
     }
 
-    private static Integer getHexValue(Attr attribute) {
+    private static Integer getHexValue(@NonNull Attr attribute) {
         return Integer.decode(attribute.getValue());
     }
 }

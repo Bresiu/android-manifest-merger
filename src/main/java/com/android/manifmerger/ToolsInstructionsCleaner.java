@@ -20,26 +20,25 @@ import static com.android.manifmerger.MergingReport.Result.ERROR;
 
 import com.android.SdkConstants;
 import com.android.annotations.NonNull;
-import com.android.annotations.Nullable;
 import com.android.annotations.concurrency.Immutable;
 import com.android.utils.ILogger;
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-
+import java.util.ArrayList;
+import java.util.List;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Removes all "tools:" statements from the resulting xml.
  *
  * All attributes belonging to the {@link com.android.SdkConstants#ANDROID_URI} namespace will be
  * removed. If an element contained a "tools:node=\"remove\"" attribute, the element will be
- * deleted.
+ * deleted. And elements that are themselves in the tools namespace will also be removed.
  */
 @Immutable
 public class ToolsInstructionsCleaner {
@@ -52,27 +51,33 @@ public class ToolsInstructionsCleaner {
     /**
      * Cleans all attributes belonging to the {@link com.android.SdkConstants#TOOLS_URI} namespace.
      *
-     * @param document the xml document to clean
+     * @param document the document to clean
      * @param logger logger to use in case of errors and warnings.
      * @return the cleaned document or null if an error occurred.
      */
-    @Nullable
-    public static XmlDocument cleanToolsReferences(
-            @NonNull XmlDocument document,
+    public static Optional<Document> cleanToolsReferences(
+            @NonNull ManifestMerger2.MergeType mergeType,
+            @NonNull Document document,
             @NonNull ILogger logger) {
 
-        document = Preconditions.checkNotNull(document);
-        logger = Preconditions.checkNotNull(logger);
-        MergingReport.Result result = cleanToolsReferences(document.getRootNode().getXml(),
-                logger);
-        return result == MergingReport.Result.SUCCESS
-            ? document.reparse()
-            : null;
+        Preconditions.checkNotNull(document);
+        Preconditions.checkNotNull(logger);
+        MergingReport.Result result =
+                cleanToolsReferences(mergeType, document.getDocumentElement(), logger);
+        return result == MergingReport.Result.SUCCESS ? Optional.of(document) : Optional.absent();
     }
 
+    @NonNull
     private static MergingReport.Result cleanToolsReferences(
-            Element element,
-            ILogger logger) {
+            @NonNull ManifestMerger2.MergeType mergeType,
+            @NonNull Element element,
+            @NonNull ILogger logger) {
+
+        if (SdkConstants.TOOLS_URI.equals(element.getNamespaceURI())) {
+            // Delete the entire node
+            element.getParentNode().removeChild(element);
+            return MergingReport.Result.SUCCESS;
+        }
 
         NamedNodeMap namedNodeMap = element.getAttributes();
         if (namedNodeMap != null) {
@@ -86,7 +91,7 @@ public class ToolsInstructionsCleaner {
                 if (SdkConstants.TOOLS_URI.equals(attribute.getNamespaceURI())) {
                     // we need to special case when the element contained tools:node="remove"
                     // since it also needs to be deleted unless it had a selector.
-                    // if this is ools:node="removeAll", we always delete the element whether or
+                    // if this is tools:node="removeAll", we always delete the element whether or
                     // not there is a tools:selector.
                     boolean hasSelector = namedNodeMap.getNamedItemNS(
                             SdkConstants.TOOLS_URI, "selector") != null;
@@ -103,17 +108,26 @@ public class ToolsInstructionsCleaner {
                                         XmlNode.unwrapName(element)));
                             return ERROR;
                         } else {
+                            // Remove leading comments
+                            for (Node comment : XmlElement.getLeadingComments(element)) {
+                                comment.getParentNode().removeChild(comment);
+                            }
+
                             element.getParentNode().removeChild(element);
                         }
                     } else {
-                        // anything else, we just clean the attribute.
-                        element.removeAttributeNS(
-                                attribute.getNamespaceURI(), attribute.getLocalName());
+                        // anything else, we just clean the attribute unless we are merging for
+                        // libraries.
+                        if (mergeType != ManifestMerger2.MergeType.LIBRARY) {
+                            element.removeAttributeNS(
+                                    attribute.getNamespaceURI(), attribute.getLocalName());
+                        }
                     }
                 }
                 // this could also be the xmlns:tools declaration.
                 if (attribute.getNodeName().startsWith(SdkConstants.XMLNS_PREFIX)
-                    && SdkConstants.TOOLS_URI.equals(attribute.getNodeValue())) {
+                    && SdkConstants.TOOLS_URI.equals(attribute.getNodeValue())
+                        && mergeType != ManifestMerger2.MergeType.LIBRARY) {
                     element.removeAttribute(attribute.getNodeName());
                 }
             }
@@ -129,7 +143,7 @@ public class ToolsInstructionsCleaner {
             }
         }
         for (Element childElement : childElements.build()) {
-            if (cleanToolsReferences(childElement, logger) == ERROR) {
+            if (cleanToolsReferences(mergeType, childElement, logger) == ERROR) {
                 return ERROR;
             }
         }

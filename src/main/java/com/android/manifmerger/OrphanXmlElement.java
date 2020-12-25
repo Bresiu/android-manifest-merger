@@ -18,15 +18,12 @@ package com.android.manifmerger;
 
 import static com.android.manifmerger.ManifestModel.NodeTypes;
 
-import com.android.SdkConstants;
 import com.android.annotations.NonNull;
 import com.android.annotations.Nullable;
 import com.android.ide.common.blame.SourceFile;
 import com.android.ide.common.blame.SourcePosition;
-import com.android.utils.XmlUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
-
 import org.w3c.dom.Element;
 
 /**
@@ -40,26 +37,12 @@ public class OrphanXmlElement extends XmlNode {
     @NonNull
     private final NodeTypes mType;
 
-    public OrphanXmlElement(@NonNull Element xml) {
-
+    public OrphanXmlElement(@NonNull Element xml, @NonNull DocumentModel<NodeTypes> model) {
         mXml = Preconditions.checkNotNull(xml);
-        NodeTypes nodeType;
         String elementName = mXml.getNodeName();
-        // this is bit more complicated than it should be. Look first if there is a namespace
-        // prefix in the name, most elements don't. If they do, however, strip it off if it is the
-        // android prefix, but if it's custom namespace prefix, classify the node as CUSTOM.
-        int indexOfColon = elementName.indexOf(':');
-        if (indexOfColon != -1) {
-            String androidPrefix = XmlUtils.lookupNamespacePrefix(xml, SdkConstants.ANDROID_URI);
-            if (androidPrefix.equals(elementName.substring(0, indexOfColon))) {
-                nodeType = NodeTypes.fromXmlSimpleName(elementName.substring(indexOfColon + 1));
-            } else {
-                nodeType = NodeTypes.CUSTOM;
-            }
-        } else {
-            nodeType = NodeTypes.fromXmlSimpleName(elementName);
-        }
-        mType = nodeType;
+        // if there's a namespace prefix, just strip it. The DocumentModel does not look at
+        // namespaces right now.
+        mType = model.fromXmlSimpleName(elementName.substring(elementName.indexOf(':') + 1));
     }
 
     /**
@@ -77,6 +60,7 @@ public class OrphanXmlElement extends XmlNode {
     }
 
 
+    @NonNull
     @Override
     public NodeKey getId() {
         return new NodeKey(Strings.isNullOrEmpty(getKey())
@@ -84,6 +68,7 @@ public class OrphanXmlElement extends XmlNode {
                 : getName().toString() + "#" + getKey());
     }
 
+    @NonNull
     @Override
     public NodeName getName() {
         return XmlNode.unwrapName(mXml);
