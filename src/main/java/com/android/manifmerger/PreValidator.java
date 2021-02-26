@@ -16,6 +16,8 @@
 
 package com.android.manifmerger;
 
+import static com.android.manifmerger.ManifestMerger2.COMPATIBLE_SCREENS_SUB_MANIFEST;
+import static com.android.manifmerger.ManifestMerger2.WEAR_APP_SUB_MANIFEST;
 import static com.android.manifmerger.MergingReport.Record.Severity.ERROR;
 import static com.android.manifmerger.MergingReport.Record.Severity.WARNING;
 import static com.android.manifmerger.XmlNode.NodeKey;
@@ -24,18 +26,16 @@ import com.android.SdkConstants;
 import com.android.annotations.NonNull;
 import com.android.xml.AndroidManifest;
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-
-import org.w3c.dom.Attr;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import org.w3c.dom.Attr;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 /**
  * Validates a loaded {@link XmlDocument} and check for potential inconsistencies in the model due
@@ -54,38 +54,38 @@ public class PreValidator {
     }
 
     /**
-     * Validates a loaded {@link com.android.manifmerger.XmlDocument} and return a status of the
-     * merging model.
+     * Validates a loaded {@link XmlDocument} and return a status of the merging model.
      *
-     * Will return one the following status :
+     * <p>Will return one the following status :
+     *
      * <ul>
-     *     <li>{@link com.android.manifmerger.MergingReport.Result#SUCCESS} : the merging model is
-     *     correct, merging should be attempted</li>
-     *     <li>{@link com.android.manifmerger.MergingReport.Result#WARNING} : the merging model
-     *     contains non fatal error, user should be notified, merging can be attempted</li>
-     *     <li>{@link com.android.manifmerger.MergingReport.Result#ERROR} : the merging model
-     *     contains errors, user must be notified, merging should not be attempted</li>
+     *   <li>{@link MergingReport.Result#SUCCESS} : the merging model is correct, merging should be
+     *       attempted
+     *   <li>{@link MergingReport.Result#WARNING} : the merging model contains non fatal error, user
+     *       should be notified, merging can be attempted
+     *   <li>{@link MergingReport.Result#ERROR} : the merging model contains errors, user must be
+     *       notified, merging should not be attempted
      * </ul>
      *
-     * A successful validation does not mean that the merging will be successful, it only means
-     * that the {@link com.android.SdkConstants#TOOLS_URI} instructions are correct and consistent.
+     * A successful validation does not mean that the merging will be successful, it only means that
+     * the {@link SdkConstants#TOOLS_URI} instructions are correct and consistent.
      *
      * @param mergingReport report to log warnings and errors.
      * @param xmlDocument the loaded xml part.
-     * @return one the {@link com.android.manifmerger.MergingReport.Result} value.
+     * @return one the {@link MergingReport.Result} value.
      */
     @NonNull
     public static MergingReport.Result validate(
-            @NonNull MergingReport.Builder mergingReport,
-            @NonNull XmlDocument xmlDocument) {
+            @NonNull MergingReport.Builder mergingReport, @NonNull XmlDocument xmlDocument) {
 
         validateManifestAttribute(
                 mergingReport, xmlDocument.getRootNode(), xmlDocument.getFileType());
         return validate(mergingReport, xmlDocument.getRootNode());
     }
 
-    private static MergingReport.Result validate(MergingReport.Builder mergingReport,
-            XmlElement xmlElement) {
+    @NonNull
+    private static MergingReport.Result validate(@NonNull MergingReport.Builder mergingReport,
+            @NonNull XmlElement xmlElement) {
 
         validateAttributeInstructions(mergingReport, xmlElement);
 
@@ -113,9 +113,9 @@ public class PreValidator {
                                 childElement.printPosition(),
                                 childrenKeys.get(childElement.getId()).printPosition());
                         if (twin.compareTo(childElement).isPresent()) {
-                            childElement.addMessage(mergingReport, ERROR, message);
+                            mergingReport.addMessage(childElement, ERROR, message);
                         } else {
-                            childElement.addMessage(mergingReport, WARNING, message);
+                            mergingReport.addMessage(childElement, WARNING, message);
                         }
                     }
                     childrenKeys.put(childElement.getId(), childElement);
@@ -131,8 +131,8 @@ public class PreValidator {
      * Validate an xml declaration with 'tools:node="removeAll" annotation. There should not
      * be any other attribute declaration on this element.
      */
-    private static void validateRemoveAllOperation(MergingReport.Builder mergingReport,
-            XmlElement element) {
+    private static void validateRemoveAllOperation(@NonNull MergingReport.Builder mergingReport,
+            @NonNull XmlElement element) {
 
         NamedNodeMap attributes = element.getXml().getAttributes();
         if (attributes.getLength() > 1) {
@@ -151,12 +151,12 @@ public class PreValidator {
                     element.printPosition(),
                     Joiner.on(',').join(extraAttributeNames)
             );
-            element.addMessage(mergingReport, ERROR, message);
+            mergingReport.addMessage(element, ERROR, message);
         }
     }
 
-    private static void checkSelectorPresence(MergingReport.Builder mergingReport,
-            XmlElement element) {
+    private static void checkSelectorPresence(@NonNull MergingReport.Builder mergingReport,
+            @NonNull XmlElement element) {
 
         Attr selectorAttribute =
                 element.getXml().getAttributeNodeNS(SdkConstants.TOOLS_URI, Selector.SELECTOR_LOCAL_NAME);
@@ -166,22 +166,34 @@ public class PreValidator {
                     selectorAttribute.getValue(),
                     element.getId(),
                     element.printPosition());
-            element.addMessage(mergingReport, ERROR, message);
+            mergingReport.addMessage(element, ERROR, message);
         }
     }
 
     private static void validateManifestAttribute(
-            MergingReport.Builder mergingReport, XmlElement manifest, XmlDocument.Type fileType) {
+            @NonNull MergingReport.Builder mergingReport, @NonNull XmlElement manifest, XmlDocument.Type fileType) {
         Attr attributeNode = manifest.getXml().getAttributeNode(AndroidManifest.ATTRIBUTE_PACKAGE);
-        // it's ok for an overlay to not have a package name, it's not ok for a main manifest
-        // and it's a warning for a library.
-        if (attributeNode == null && fileType != XmlDocument.Type.OVERLAY) {
-            manifest.addMessage(mergingReport,
-                    fileType == XmlDocument.Type.MAIN ? ERROR : WARNING,
+        // it's ok for an overlay or a sub-manifest to have no package name, but it's an error for
+        // other manifest types.
+        if ((attributeNode == null || attributeNode.getValue().isEmpty())
+                && fileType != XmlDocument.Type.OVERLAY
+                && !isSubManifest(manifest)) {
+            mergingReport.addMessage(
+                    manifest,
+                    ERROR,
                     String.format(
-                        "Missing 'package' declaration in manifest at %1$s",
-                        manifest.printPosition()));
+                            "Missing 'package' declaration in manifest at %1$s",
+                            manifest.printPosition()));
         }
+    }
+
+    private static boolean isSubManifest(@NonNull XmlElement manifest) {
+        String description = manifest.getSourceFile().getDescription();
+        if (description == null) {
+            return false;
+        }
+        return description.equals(WEAR_APP_SUB_MANIFEST)
+                || description.equals(COMPATIBLE_SCREENS_SUB_MANIFEST);
     }
 
     /**
@@ -191,9 +203,9 @@ public class PreValidator {
      * @return true if the element has a valid key or false it does not need one or it is invalid.
      */
     private static boolean checkKeyPresence(
-            MergingReport.Builder mergingReport,
-            XmlElement xmlElement) {
-        ManifestModel.NodeKeyResolver nodeKeyResolver = xmlElement.getType().getNodeKeyResolver();
+            @NonNull MergingReport.Builder mergingReport,
+            @NonNull XmlElement xmlElement) {
+        NodeKeyResolver nodeKeyResolver = xmlElement.getType().getNodeKeyResolver();
         ImmutableList<String> keyAttributesNames = nodeKeyResolver.getKeyAttributesNames();
         if (keyAttributesNames.isEmpty()) {
             return false;
@@ -211,19 +223,20 @@ public class PreValidator {
                             keyAttributesNames.get(0),
                             xmlElement.getId(),
                             xmlElement.printPosition());
-            xmlElement.addMessage(mergingReport, ERROR, message);
+            mergingReport.addMessage(xmlElement, ERROR, message);
             return false;
         }
         return true;
     }
 
     /**
-     * Validate attributes part of the {@link com.android.SdkConstants#ANDROID_URI}
+     * Validate attributes part of the {@link SdkConstants#ANDROID_URI}
+     *
      * @param mergingReport report to log warnings and errors.
      * @param xmlElement xml element to check its attributes.
      */
-    private static void validateAndroidAttributes(MergingReport.Builder mergingReport,
-            XmlElement xmlElement) {
+    private static void validateAndroidAttributes(
+            @NonNull MergingReport.Builder mergingReport, @NonNull XmlElement xmlElement) {
         for (XmlAttribute xmlAttribute : xmlElement.getAttributes()) {
             AttributeModel model = xmlAttribute.getModel();
             if (model != null && model.getOnReadValidator() != null) {
@@ -234,13 +247,13 @@ public class PreValidator {
     }
 
     /**
-     * Validates attributes part of the {@link com.android.SdkConstants#TOOLS_URI}
+     * Validates attributes part of the {@link SdkConstants#TOOLS_URI}
+     *
      * @param mergingReport report to log warnings and errors.
      * @param xmlElement xml element to check its attributes.
      */
     private static void validateAttributeInstructions(
-            MergingReport.Builder mergingReport,
-            XmlElement xmlElement) {
+            @NonNull MergingReport.Builder mergingReport, @NonNull XmlElement xmlElement) {
 
         for (Map.Entry<XmlNode.NodeName, AttributeOperationType> attributeOperationTypeEntry :
                 xmlElement.getAttributeOperations()) {
@@ -254,26 +267,30 @@ public class PreValidator {
                     // check we are not provided a new value.
                     if (attribute.isPresent()) {
                         // Add one to startLine so the first line is displayed as 1.
-                        xmlElement.addMessage(mergingReport, ERROR, String.format(
-                                "tools:remove specified at line:%d for attribute %s, but "
-                                        + "attribute also declared at line:%d, "
-                                        + "do you want to use tools:replace instead ?",
-                                xmlElement.getPosition().getStartLine() + 1,
-                                attributeOperationTypeEntry.getKey(),
-                                attribute.get().getPosition().getStartLine() + 1
-                        ));
+                        mergingReport.addMessage(
+                                xmlElement,
+                                ERROR,
+                                String.format(
+                                        "tools:remove specified at line:%d for attribute %s, but "
+                                                + "attribute also declared at line:%d, "
+                                                + "do you want to use tools:replace instead ?",
+                                        xmlElement.getPosition().getStartLine() + 1,
+                                        attributeOperationTypeEntry.getKey(),
+                                        attribute.get().getPosition().getStartLine() + 1));
                     }
                     break;
                 case REPLACE:
                     // check we are provided a new value
                     if (!attribute.isPresent()) {
                         // Add one to startLine so the first line is displayed as 1.
-                        xmlElement.addMessage(mergingReport, ERROR, String.format(
-                                "tools:replace specified at line:%d for attribute %s, but "
-                                        + "no new value specified",
-                                xmlElement.getPosition().getStartLine() + 1,
-                                attributeOperationTypeEntry.getKey()
-                        ));
+                        mergingReport.addMessage(
+                                xmlElement,
+                                ERROR,
+                                String.format(
+                                        "tools:replace specified at line:%d for attribute %s, but "
+                                                + "no new value specified",
+                                        xmlElement.getPosition().getStartLine() + 1,
+                                        attributeOperationTypeEntry.getKey()));
                     }
                     break;
                 default:

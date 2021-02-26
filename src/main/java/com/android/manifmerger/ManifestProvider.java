@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 The Android Open Source Project
+ * Copyright (C) 2016 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,25 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.android.manifmerger;
 
 import com.android.annotations.NonNull;
+import com.android.annotations.Nullable;
+import java.io.File;
 
 /**
- * Callback used by the ManifestMerger to query the caller.
+ * An Object that provides a manifest.
  */
-public interface ICallback {
-
-    int UNKNOWN_CODENAME = 0;
+public interface ManifestProvider {
 
     /**
-     * Queries the caller to find the API level for a given provisional API codename,
-     * as used in the &lt;uses-sdk&gt; {@code minSdkVersion} field.
-     *
-     * @param codename A non-null codename string.
-     * @return The integer API > 0 for the given codename, or {@link #UNKNOWN_CODENAME}.
+     * Returns the location of the manifest.
      */
-    int queryCodenameApiLevel(@NonNull String codename);
+    @NonNull
+    File getManifest();
 
+    /**
+     * Returns a user friendly name.
+     */
+    @Nullable
+    String getName();
 }

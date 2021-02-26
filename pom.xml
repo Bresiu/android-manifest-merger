@@ -1,48 +1,13 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.android.tools.build</groupId>
   <artifactId>manifest-merger</artifactId>
-  <version>25.3.0</version>
-  <dependencies>
-    <dependency>
-      <groupId>com.android.tools</groupId>
-      <artifactId>common</artifactId>
-      <version>25.3.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.android.tools</groupId>
-      <artifactId>sdklib</artifactId>
-      <version>25.3.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.android.tools</groupId>
-      <artifactId>sdk-common</artifactId>
-      <version>25.3.0</version>
-    </dependency>
-    <dependency>
-      <groupId>net.sf.kxml</groupId>
-      <artifactId>kxml2</artifactId>
-      <version>2.3.0</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-      <version>2.2.4</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>20.0</version>
-    </dependency>
-  </dependencies>
-  <properties>
-    <java.version>1.8</java.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-  <packaging>jar</packaging>
+  <version>27.1.1</version>
+  <name>Android Tools Manifest Merger library</name>
   <description>A Library to merge Android manifests.</description>
-  <url>http://tools.android.com/</url>
-  <name>com.android.tools.build.manifest-merger</name>
+  <url>https://developer.android.com/studio</url>
+  <inceptionYear>2007</inceptionYear>
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
@@ -50,15 +15,97 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
+  <properties>
+    <kotlin.version>1.4.21</kotlin.version>
+    <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
+    <java.version>1.8</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <packaging>jar</packaging>
   <developers>
     <developer>
       <name>The Android Open Source Project</name>
     </developer>
   </developers>
+  <repositories>
+    <repository>
+      <id>central</id>
+      <name>bintray</name>
+      <url>https://jcenter.bintray.com</url>
+    </repository>
+    <repository>
+      <id>google</id>
+      <name>google</name>
+      <url>https://mvnrepository.com/repos/google</url>
+    </repository>
+    <repository>
+      <id>google2</id>
+      <name>google2</name>
+      <url>https://maven.google.com</url>
+    </repository>
+    <repository>
+      <id>google3</id>
+      <name>google3</name>
+      <url>https://dl.google.com/dl/android/maven2/</url>
+    </repository>
+    <repository>
+      <id>android</id>
+      <name>androidtools</name>
+      <url>https://mvnrepository.com/repos/bt-android-tools</url>
+    </repository>
+    <repository>
+      <id>sonatype</id>
+      <name>sonatype</name>
+      <url>https://mvnrepository.com/repos/sonatype-releases</url>
+    </repository>
+  </repositories>
   <build>
-    <finalName>manifest-merger</finalName>
     <plugins>
       <plugin>
+        <groupId>org.jetbrains.kotlin</groupId>
+        <artifactId>kotlin-maven-plugin</artifactId>
+        <version>${kotlin.version}</version>
+        <executions>
+          <execution>
+            <id>compile</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+            <configuration>
+              <sourceDirs>
+                <sourceDir>src/main/kotlin</sourceDir>
+                <sourceDir>src/main/java</sourceDir>
+              </sourceDirs>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>3.3.0</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.android.manifmerger.Merger</mainClass>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <inherited>true</inherited>
@@ -66,6 +113,23 @@
           <source>${java.version}</source>
           <target>${java.version}</target>
         </configuration>
+        <executions>
+                <execution>
+                    <id>default-compile</id>
+                    <phase>none</phase>
+                </execution>
+                <execution>
+                    <id>default-testCompile</id>
+                    <phase>none</phase>
+                </execution>
+                <execution>
+                    <id>java-compile</id>
+                    <phase>compile</phase>
+                    <goals>
+                        <goal>compile</goal>
+                    </goals>
+                </execution>
+            </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -91,36 +155,51 @@
           <tagNameFormat>@{project.version}</tagNameFormat>
         </configuration>
       </plugin>
-      <plugin>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.3.0</version>
-        <configuration>
-          <archive>
-            <manifest>
-              <mainClass>com.android.manifmerger.Merger</mainClass>
-            </manifest>
-          </archive>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-assembly</id>
-            <!-- this is used for inheritance merges -->
-            <phase>package</phase>
-            <!-- bind to the packaging phase -->
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
     </plugins>
+    <finalName>manifest-merger</finalName>
   </build>
   <scm>
+    <connection>git://android.googlesource.com/platform/tools/base.git</connection>
     <url>https://android.googlesource.com/platform/tools/base</url>
-    <developerConnection>scm:git://android.googlesource.com/platform/tools/base.git</developerConnection>
-    <tag>25.3.0</tag>
+    <tag>27.1.1</tag>
   </scm>
+  <dependencies>
+    <dependency>
+      <groupId>org.jetbrains.kotlin</groupId>
+      <!-- <artifactId>kotlin-stdlib-jdk8</artifactId> -->
+      <artifactId>kotlin-stdlib</artifactId>
+      <version>${kotlin.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.android.tools</groupId>
+      <artifactId>common</artifactId>
+      <version>27.1.1</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.android.tools</groupId>
+      <artifactId>sdklib</artifactId>
+      <version>27.1.1</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.android.tools</groupId>
+      <artifactId>sdk-common</artifactId>
+      <version>27.1.1</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.8.5</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.kxml</groupId>
+      <artifactId>kxml2</artifactId>
+      <version>2.3.0</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
 </project>

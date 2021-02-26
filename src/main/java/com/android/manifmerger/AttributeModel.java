@@ -19,7 +19,10 @@ package com.android.manifmerger;
 import com.android.annotations.NonNull;
 import com.android.annotations.Nullable;
 import com.google.common.base.Joiner;
-
+import com.google.common.collect.ImmutableList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -114,6 +117,7 @@ class AttributeModel {
      * Creates a new {@link Builder} to describe an attribute.
      * @param attributeName the to be described attribute name
      */
+    @NonNull
     static Builder newModel(String attributeName) {
         return new Builder(attributeName);
     }
@@ -126,6 +130,7 @@ class AttributeModel {
         private String mDefaultValue;
         private Validator mOnReadValidator;
         private Validator mOnWriteValidator;
+        @NonNull
         private MergingPolicy mMergingPolicy = STRICT_MERGING_POLICY;
 
         Builder(String name) {
@@ -137,6 +142,7 @@ class AttributeModel {
          * class names with package settings as provided by the manifest node's package attribute
          * {@link <a href=http://developer.android.com/guide/topics/manifest/manifest-element.html>}
          */
+        @NonNull
         Builder setIsPackageDependent() {
             mIsPackageDependent = true;
             return this;
@@ -145,6 +151,7 @@ class AttributeModel {
         /**
          * Sets the attribute default value.
          */
+        @NonNull
         Builder setDefaultValue(String value) {
             mDefaultValue =  value;
             return this;
@@ -154,6 +161,7 @@ class AttributeModel {
          * Sets a {@link com.android.manifmerger.AttributeModel.Validator} to validate the
          * attribute's values coming from xml files.
          */
+        @NonNull
         Builder setOnReadValidator(Validator validator) {
             mOnReadValidator = validator;
             return this;
@@ -163,12 +171,14 @@ class AttributeModel {
          * Sets a {@link com.android.manifmerger.AttributeModel.Validator} to validate values
          * before they are written to the final merged document.
          */
+        @NonNull
         Builder setOnWriteValidator(Validator validator) {
             mOnWriteValidator = validator;
             return this;
         }
 
-        Builder setMergingPolicy(MergingPolicy mergingPolicy) {
+        @NonNull
+        Builder setMergingPolicy(@NonNull MergingPolicy mergingPolicy) {
             mMergingPolicy = mergingPolicy;
             return this;
         }
@@ -176,6 +186,7 @@ class AttributeModel {
         /**
          * Build an immutable {@link com.android.manifmerger.AttributeModel}
          */
+        @NonNull
         AttributeModel build() {
             return new AttributeModel(
                     XmlNode.fromXmlName("android:" + mName),
@@ -202,6 +213,14 @@ class AttributeModel {
         boolean shouldMergeDefaultValues();
 
         /**
+         * Returns true if this attribute can be merged from the provided {@link XmlDocument}, false
+         * otherwise
+         */
+        default boolean canMergeWithLowerPriority(@NonNull XmlDocument document) {
+            return EnumSet.allOf(XmlDocument.Type.class).contains(document.getFileType());
+        }
+
+        /**
          * Merges the two attributes values and returns the merged value. If the values cannot be
          * merged, return null.
          */
@@ -212,6 +231,7 @@ class AttributeModel {
     /**
      * Standard attribute value merging policy, generates an error unless both values are equal.
      */
+    @NonNull
     static final MergingPolicy STRICT_MERGING_POLICY = new MergingPolicy() {
 
         @Override
@@ -268,7 +288,7 @@ class AttributeModel {
      * Decode a decimal or hexadecimal {@link String} into an {@link Integer}.
      * String starting with 0 will be considered decimal, not octal.
      */
-    private static int decodeDecOrHexString(String s) {
+    private static int decodeDecOrHexString(@NonNull String s) {
         long decodedValue = s.startsWith("0x") || s.startsWith("0X")
                 ? Long.decode(s)
                 : Long.parseLong(s);
@@ -312,7 +332,7 @@ class AttributeModel {
         private static final Pattern TRUE_PATTERN = Pattern.compile("true|True|TRUE");
         private static final Pattern FALSE_PATTERN = Pattern.compile("false|False|FALSE");
 
-        private static boolean isTrue(String value) {
+        private static boolean isTrue(@NonNull String value) {
             return TRUE_PATTERN.matcher(value).matches();
         }
 
@@ -323,15 +343,13 @@ class AttributeModel {
             boolean matches = TRUE_PATTERN.matcher(value).matches() ||
                     FALSE_PATTERN.matcher(value).matches();
             if (!matches) {
-                attribute.addMessage(mergingReport, MergingReport.Record.Severity.ERROR,
+                mergingReport.addMessage(
+                        attribute,
+                        MergingReport.Record.Severity.ERROR,
                         String.format(
                                 "Attribute %1$s at %2$s has an illegal value=(%3$s), "
                                         + "expected 'true' or 'false'",
-                                attribute.getId(),
-                                attribute.printPosition(),
-                                value
-                        )
-                );
+                                attribute.getId(), attribute.printPosition(), value));
             }
             return matches;
         }
@@ -343,10 +361,12 @@ class AttributeModel {
      */
     static class MultiValueValidator implements Validator {
 
+        @NonNull
         private final String[] multiValues;
+        @NonNull
         private final String allValues;
 
-        MultiValueValidator(String... multiValues) {
+        MultiValueValidator(@NonNull String... multiValues) {
             this.multiValues = multiValues;
             allValues = Joiner.on(',').join(multiValues);
         }
@@ -359,17 +379,61 @@ class AttributeModel {
                     return true;
                 }
             }
-            attribute.addMessage(mergingReport, MergingReport.Record.Severity.ERROR,
+            mergingReport.addMessage(
+                    attribute,
+                    MergingReport.Record.Severity.ERROR,
                     String.format(
                             "Invalid value for attribute %1$s at %2$s, value=(%3$s), "
                                     + "acceptable values are (%4$s)",
-                            attribute.getId(),
-                            attribute.printPosition(),
-                            value,
-                            allValues
-                    )
-            );
+                            attribute.getId(), attribute.printPosition(), value, allValues));
             return false;
+        }
+    }
+
+    /**
+     * A {@link com.android.manifmerger.AttributeModel.Validator} for verifying that each value in a
+     * string of delimiter-separated values is an acceptable value, and that there's at least one
+     * value in the string of delimiter-separated values.
+     */
+    static class SeparatedValuesValidator implements Validator {
+
+        @NonNull private final ImmutableList<String> multiValuesList;
+        @NonNull private final String delimiter;
+
+        SeparatedValuesValidator(@NonNull String delimiter, @NonNull String... multiValues) {
+            this.multiValuesList = ImmutableList.copyOf(multiValues);
+            this.delimiter = delimiter;
+        }
+
+        @Override
+        public boolean validates(
+                @NonNull MergingReport.Builder mergingReport,
+                @NonNull XmlAttribute attribute,
+                @NonNull String value) {
+            boolean result = true;
+            List<String> delimitedValues = Arrays.asList(value.split(Pattern.quote(delimiter)));
+            if (delimitedValues.isEmpty()) {
+                result = false;
+            }
+            for (String delimitedValue : delimitedValues) {
+                if (!multiValuesList.contains(delimitedValue)) {
+                    result = false;
+                    break;
+                }
+            }
+            if (!result) {
+                mergingReport.addMessage(
+                        attribute,
+                        MergingReport.Record.Severity.ERROR,
+                        String.format(
+                                "Invalid value for attribute %1$s at %2$s, value=(%3$s), "
+                                        + "acceptable delimiter-separated values are (%4$s)",
+                                attribute.getId(),
+                                attribute.printPosition(),
+                                value,
+                                Joiner.on(delimiter).join(multiValuesList)));
+            }
+            return result;
         }
     }
 
@@ -385,13 +449,12 @@ class AttributeModel {
             try {
                 return Integer.parseInt(value) > 0;
             } catch (NumberFormatException e) {
-                attribute.addMessage(mergingReport, MergingReport.Record.Severity.ERROR,
+                mergingReport.addMessage(
+                        attribute,
+                        MergingReport.Record.Severity.ERROR,
                         String.format(
                                 "Attribute %1$s at %2$s must be an integer, found %3$s",
-                                attribute.getId(),
-                                attribute.printPosition(),
-                                value)
-                );
+                                attribute.getId(), attribute.printPosition(), value));
                 return false;
             }
         }
@@ -410,14 +473,13 @@ class AttributeModel {
             Matcher matcher = PATTERN.matcher(value);
             boolean valid = matcher.matches() && matcher.group(1).length() <= 8;
             if (!valid) {
-                attribute.addMessage(mergingReport, MergingReport.Record.Severity.ERROR,
+                mergingReport.addMessage(
+                        attribute,
+                        MergingReport.Record.Severity.ERROR,
                         String.format(
                                 "Attribute %1$s at %2$s is not a valid hexadecimal 32 bit value,"
                                         + " found %3$s",
-                                attribute.getId(),
-                                attribute.printPosition(),
-                                value
-                        ));
+                                attribute.getId(), attribute.printPosition(), value));
             }
             return valid;
         }
@@ -447,7 +509,9 @@ class AttributeModel {
                     valid = false;
                 }
                 if (!valid) {
-                    attribute.addMessage(mergingReport, MergingReport.Record.Severity.ERROR,
+                    mergingReport.addMessage(
+                            attribute,
+                            MergingReport.Record.Severity.ERROR,
                             String.format(
                                     "Attribute %1$s at %2$s is not a valid hexadecimal value,"
                                             + " minimum is 0x%3$08X, maximum is 0x%4$08X, found %5$s",
@@ -455,8 +519,7 @@ class AttributeModel {
                                     attribute.printPosition(),
                                     mMinimumValue,
                                     Integer.MAX_VALUE,
-                                    value
-                            ));
+                                    value));
                 }
                 return valid;
             }
