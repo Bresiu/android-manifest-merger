@@ -16,7 +16,7 @@
     </license>
   </licenses>
   <properties>
-    <kotlin.version>1.4.21</kotlin.version>
+    <kotlin.version>1.6.0</kotlin.version>
     <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     <java.version>1.8</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
